@@ -59,8 +59,18 @@ def _get_scoop_link(scoop):
     return a.get('href')
 
 
-def _is_scoop_known(scoop):
-    return False
+def _is_scoop_known(link):
+    with open("known_scoops.txt", 'a+') as file:
+        known = link in file.read()
+        file.close()
+        return known
+
+
+
+def _acknowledge_scoop(link):
+    with open("known_scoops.txt", 'a+') as file:
+        file.write(link)
+        file.close()
 
 
 def _is_trendy(scoop):
@@ -110,7 +120,8 @@ def filter_trendy_scoops(scoops):
     trendy_scoops = []
     for scoop in scoops:
         try:
-            if _is_trendy(scoop):
+            if not _is_scoop_known(_get_scoop_link(scoop)) and _is_trendy(scoop):
+                _acknowledge_scoop(_get_scoop_link(scoop))
                 trendy_scoops.append(_get_scoop_link(scoop))
         except Exception as e:
             try:

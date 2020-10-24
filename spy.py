@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import re
 from datetime import datetime
@@ -74,13 +74,15 @@ def _acknowledge_scoop(link):
         file.close()
 
 
-def _is_trendy(scoop):
+def _how_trendy(scoop):
     scoop_creation_time = _get_scoop_creation_time(scoop)
     scoop_age = (datetime.now() - scoop_creation_time).seconds
     scoop_views = _get_scoop_view_count(scoop)
 
     ratio = scoop_views / scoop_age
-    return ratio > INTEREST_THRESHOLD
+    if ratio > INTEREST_THRESHOLD:
+        return ratio
+    return 0
 
 
 def _is_valid_scoop(tag):
@@ -120,9 +122,12 @@ def filter_trendy_scoops(scoops):
     trendy_scoops = []
     for scoop in scoops:
         try:
-            if not _is_scoop_known(_get_scoop_link(scoop)) and _is_trendy(scoop):
-                _acknowledge_scoop(_get_scoop_link(scoop))
-                trendy_scoops.append(_get_scoop_link(scoop))
+            if not _is_scoop_known(_get_scoop_link(scoop)):
+                score = _how_trendy(scoop)
+                if score:
+                    _acknowledge_scoop(_get_scoop_link(scoop))
+                    trendy_scoops.append(f"Found this scoop to be interesting with score of: {score:.2f}\n"
+                                         f"{_get_scoop_link(scoop)}")
         except Exception as e:
             try:
                 print(_is_valid_scoop(scoop))

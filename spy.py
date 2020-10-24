@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
-from contextlib import closing
-from requests import get
+import re
 from datetime import datetime
 
+from contextlib import closing
+from requests import get
 
 from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 
 ROOTER_SCOOPS_URL = 'https://rotter.net/scoopscache.html'
+INTEREST_THRESHOLD = 8
 
 
 def _verify_response(resp):
@@ -60,16 +62,15 @@ def _get_scoop_link(scoop):
 
 
 def _is_scoop_known(link):
-    with open("known_scoops.txt", 'a+') as file:
+    with open(".known_scoops.txt", 'a+') as file:
         known = link in file.read()
         file.close()
         return known
 
 
-
 def _acknowledge_scoop(link):
-    with open("known_scoops.txt", 'a+') as file:
-        file.write(link)
+    with open(".known_scoops.txt", 'a+') as file:
+        file.write(f"{link}\n")
         file.close()
 
 
@@ -77,10 +78,23 @@ def _is_trendy(scoop):
     scoop_creation_time = _get_scoop_creation_time(scoop)
     scoop_age = (datetime.now() - scoop_creation_time).seconds
     scoop_views = _get_scoop_view_count(scoop)
+
     ratio = scoop_views / scoop_age
-    if ratio > 3:
-        print(ratio)
-    return ratio > 5
+    return ratio > INTEREST_THRESHOLD
+
+
+def _is_valid_scoop(tag):
+    """
+    Given a bs4 tag, check whether a bs4 tag is a valid scoop tag.
+    :param tag: bs4 tag
+    :return: True if the bs4 tag is in accordance to a valid Rooter's scoop, False otherwise.
+    """
+    valid_bgcolors = ['#FDFDFD', '#eeeeee']
+    # Check if the tag has a matching background color to a scoop tag, and exclude ad scoops
+    if tag.has_attr('bgcolor'):
+        return (tag['bgcolor'] in valid_bgcolors) and ('googletag' not in tag.text) and (not bool(re.fullmatch(r"\n+", tag.text)))
+    else:
+        pass
 
 
 def get_all_scoops():
@@ -89,21 +103,7 @@ def get_all_scoops():
     :return: ResultSet of all the matching bs4 Tag(s).
     """
 
-    def _is_valid_scoop(tag):
-        """
-        Given a bs4 tag, check whether a bs4 tag is a valid scoop tag.
-        :param tag: bs4 tag
-        :return: True if the bs4 tag is in accordance to a valid Rooter's scoop, False otherwise.
-        """
-        valid_bgcolors = ['#FDFDFD', '#eeeeee']
 
-        # Check if the tag has a matching background color to a scoop tag, and exclude ad scoops
-        if tag.has_attr('bgcolor'):
-            return tag['bgcolor'] in valid_bgcolors \
-                   and 'googletag' not in tag.text \
-                   and tag.text != '\n\n'
-        else:
-            return False
 
     raw_html = _simple_get(ROOTER_SCOOPS_URL)
 
@@ -125,6 +125,7 @@ def filter_trendy_scoops(scoops):
                 trendy_scoops.append(_get_scoop_link(scoop))
         except Exception as e:
             try:
+                print(_is_valid_scoop(scoop))
                 print(e)
                 print(f"Couldn't parse this scoop: {scoop.text}")
                 print(f"view: {_get_scoop_view_count(scoop)}")

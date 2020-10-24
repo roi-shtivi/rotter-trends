@@ -10,7 +10,7 @@ from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 
 ROOTER_SCOOPS_URL = 'https://rotter.net/scoopscache.html'
-INTEREST_THRESHOLD = 8
+INTEREST_THRESHOLD = 10
 
 
 def _verify_response(resp):
@@ -62,10 +62,13 @@ def _get_scoop_link(scoop):
 
 
 def _is_scoop_known(link):
-    with open(".known_scoops.txt", 'a+') as file:
-        known = link in file.read()
-        file.close()
-        return known
+    try:
+        with open(".known_scoops.txt", 'r') as file:
+            known = link in file.read()
+            file.close()
+            return known
+    except FileNotFoundError:
+        open(".known_scoops.txt", 'w+')
 
 
 def _acknowledge_scoop(link):

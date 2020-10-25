@@ -79,7 +79,7 @@ def _acknowledge_scoop(link):
 
 def _how_trendy(scoop):
     scoop_creation_time = _get_scoop_creation_time(scoop)
-    scoop_age = (datetime.now() - scoop_creation_time).seconds
+    scoop_age = int((datetime.now() - scoop_creation_time).total_seconds())
     scoop_views = _get_scoop_view_count(scoop)
 
     ratio = scoop_views / scoop_age
@@ -108,8 +108,6 @@ def get_all_scoops():
     :return: ResultSet of all the matching bs4 Tag(s).
     """
 
-
-
     raw_html = _simple_get(ROOTER_SCOOPS_URL)
 
     if raw_html is None:
@@ -135,9 +133,9 @@ def filter_trendy_scoops(scoops):
             try:
                 print(_is_valid_scoop(scoop))
                 print(e)
-                print(f"Couldn't parse this scoop: {scoop.text}")
-                print(f"view: {_get_scoop_view_count(scoop)}")
-                print(f"creation: {_get_scoop_creation_time()}")
+                print(f"Could'nt parse this scoop: {scoop.text}")
+                print(f"View: {_get_scoop_view_count(scoop)}")
+                print(f"Creation: {_get_scoop_creation_time()}")
             except:
                 pass
     return trendy_scoops

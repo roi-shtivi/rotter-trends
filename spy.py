@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime
+import logging
 
 from contextlib import closing
 from requests import get
@@ -37,7 +38,7 @@ def _simple_get(url):
                 return None
 
     except RequestException as e:
-        print('Error during requests to {0} : {1}'.format(url, str(e)))
+        logging.error('Error during requests to {0} : {1}'.format(url, str(e)))
         return None
 
 
@@ -80,6 +81,8 @@ def _acknowledge_scoop(link):
 def _how_trendy(scoop):
     scoop_creation_time = _get_scoop_creation_time(scoop)
     scoop_age = int((datetime.now() - scoop_creation_time).total_seconds())
+    assert scoop_age, f"scoop age is {scoop_age}, cannot calculate how trendy it is."
+
     scoop_views = _get_scoop_view_count(scoop)
 
     ratio = scoop_views / scoop_age
@@ -111,7 +114,7 @@ def get_all_scoops():
     raw_html = _simple_get(ROOTER_SCOOPS_URL)
 
     if raw_html is None:
-        print('Could not get url')
+        logging.error('Could not get url')
         return None
 
     soup = BeautifulSoup(raw_html, 'html.parser')
@@ -131,11 +134,11 @@ def filter_trendy_scoops(scoops):
                                          f"{_get_scoop_link(scoop)}")
         except Exception as e:
             try:
-                print(_is_valid_scoop(scoop))
-                print(e)
-                print(f"Could'nt parse this scoop: {scoop.text}")
-                print(f"View: {_get_scoop_view_count(scoop)}")
-                print(f"Creation: {_get_scoop_creation_time()}")
+                logging.error(_is_valid_scoop(scoop))
+                logging.error(e)
+                logging.error(f"Could'nt parse this scoop: {scoop.text}")
+                logging.error(f"View: {_get_scoop_view_count(scoop)}")
+                logging.error(f"Creation: {_get_scoop_creation_time()}")
             except:
                 pass
     return trendy_scoops
@@ -143,4 +146,4 @@ def filter_trendy_scoops(scoops):
 
 if __name__ == '__main__':
     scoops = get_all_scoops()
-    print(filter_trendy_scoops(scoops))
+    logging.info(filter_trendy_scoops(scoops))

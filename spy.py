@@ -78,7 +78,7 @@ def _acknowledge_scoop(link):
         file.close()
 
 
-def _how_trendy(scoop):
+def _how_trendy(scoop, raw=False):
     scoop_creation_time = _get_scoop_creation_time(scoop)
     scoop_age = int((datetime.now() - scoop_creation_time).total_seconds())
     assert scoop_age, f"scoop age is {scoop_age}, cannot calculate how trendy it is."
@@ -87,6 +87,8 @@ def _how_trendy(scoop):
 
     ratio = scoop_views / scoop_age
     if ratio > INTEREST_THRESHOLD:
+        return ratio
+    if raw:
         return ratio
     return 0
 
@@ -145,5 +147,10 @@ def filter_trendy_scoops(scoops):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        level=logging.DEBUG)
+
     scoops = get_all_scoops()
+    for scoop in scoops:
+        logging.debug(f"{_how_trendy(scoop, raw=True)}, {_get_scoop_link(scoop)}")
     logging.info(filter_trendy_scoops(scoops))

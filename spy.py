@@ -11,7 +11,7 @@ from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 
 ROOTER_SCOOPS_URL = 'https://rotter.net/scoopscache.html'
-INTEREST_THRESHOLD = 10
+INTEREST_THRESHOLD = 17
 
 
 def _verify_response(resp):

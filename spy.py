@@ -11,7 +11,9 @@ from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 
 ROOTER_SCOOPS_URL = 'https://rotter.net/scoopscache.html'
-INTEREST_THRESHOLD = 17
+INTEREST_THRESHOLD = 0.09
+IMMATURE_SCOOP_AGE_IN_SECONDS = 180
+SCOOPS_IN_PAGE = 30
 
 
 def _verify_response(resp):
@@ -31,7 +33,9 @@ def _simple_get(url):
     text content, otherwise return None
     """
     try:
-        with closing(get(url, stream=True)) as resp:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+
+        with closing(get(url, stream=True, headers=headers)) as resp:
             if _verify_response(resp):
                 return resp.content
             else:
@@ -78,19 +82,20 @@ def _acknowledge_scoop(link):
         file.close()
 
 
-def _how_trendy(scoop, raw=False):
+def _how_trendy(scoop):
     scoop_creation_time = _get_scoop_creation_time(scoop)
     scoop_age = int((datetime.now() - scoop_creation_time).total_seconds())
-    assert scoop_age, f"scoop age is {scoop_age}, cannot calculate how trendy it is."
+    assert scoop_age, f"Scoop age is {scoop_age}, cannot calculate how trendy it is."
+
+    if scoop_age < IMMATURE_SCOOP_AGE_IN_SECONDS:
+        logging.debug(f"Scoop {_get_scoop_link(scoop)} is too immature with age of {scoop_age}, "
+                      f"cannot calculate how trendy it is.")
+        return 0
 
     scoop_views = _get_scoop_view_count(scoop)
 
     ratio = scoop_views / scoop_age
-    if ratio > INTEREST_THRESHOLD:
-        return ratio
-    if raw:
-        return ratio
-    return 0
+    return ratio
 
 
 def _is_valid_scoop(tag):
@@ -125,25 +130,27 @@ def get_all_scoops():
 
 
 def filter_trendy_scoops(scoops):
-    trendy_scoops = []
+    trendy_scoops = {}
     for scoop in scoops:
         try:
             if not _is_scoop_known(_get_scoop_link(scoop)):
                 score = _how_trendy(scoop)
                 if score:
-                    _acknowledge_scoop(_get_scoop_link(scoop))
-                    trendy_scoops.append(f"Found this scoop to be interesting with score of: {score:.2f}\n"
-                                         f"{_get_scoop_link(scoop)}")
+                    _acknowledge_scoop(link := _get_scoop_link(scoop))
+                    trendy_scoops[link] = score
         except Exception as e:
             try:
                 logging.error(_is_valid_scoop(scoop))
                 logging.error(e)
-                logging.error(f"Could'nt parse this scoop: {scoop.text}")
+                logging.error(f"Couldn't parse this scoop: {scoop.text}")
                 logging.error(f"View: {_get_scoop_view_count(scoop)}")
-                logging.error(f"Creation: {_get_scoop_creation_time()}")
+                logging.error(f"Creation: {_get_scoop_creation_time(scoop)}")
             except:
                 pass
-    return trendy_scoops
+    _sum = sum(trendy_scoops.values())
+    for scoop, score in trendy_scoops.items():
+        trendy_scoops[scoop] = (score / _sum) * (len(trendy_scoops) / SCOOPS_IN_PAGE)
+    return {key: val for key, val in trendy_scoops.items() if val > INTEREST_THRESHOLD}
 
 
 if __name__ == '__main__':
@@ -152,5 +159,5 @@ if __name__ == '__main__':
 
     scoops = get_all_scoops()
     for scoop in scoops:
-        logging.debug(f"{_how_trendy(scoop, raw=True)}, {_get_scoop_link(scoop)}")
+        logging.debug(f"{_how_trendy(scoop)}, {_get_scoop_link(scoop)}")
     logging.info(filter_trendy_scoops(scoops))

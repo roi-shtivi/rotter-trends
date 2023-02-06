@@ -11,7 +11,7 @@ from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 
 ROOTER_SCOOPS_URL = 'https://rotter.net/scoopscache.html'
-INTEREST_THRESHOLD = 0.09
+INTEREST_THRESHOLD = 0.1
 IMMATURE_SCOOP_AGE_IN_SECONDS = 180
 SCOOPS_IN_PAGE = 30
 
@@ -130,14 +130,13 @@ def get_all_scoops():
 
 
 def filter_trendy_scoops(scoops):
-    trendy_scoops = {}
+    scoops_dict = {}
     for scoop in scoops:
         try:
             if not _is_scoop_known(_get_scoop_link(scoop)):
                 score = _how_trendy(scoop)
                 if score:
-                    _acknowledge_scoop(link := _get_scoop_link(scoop))
-                    trendy_scoops[link] = score
+                    scoops_dict[_get_scoop_link(scoop)] = score
         except Exception as e:
             try:
                 logging.error(_is_valid_scoop(scoop))
@@ -147,10 +146,13 @@ def filter_trendy_scoops(scoops):
                 logging.error(f"Creation: {_get_scoop_creation_time(scoop)}")
             except:
                 pass
-    _sum = sum(trendy_scoops.values())
-    for scoop, score in trendy_scoops.items():
-        trendy_scoops[scoop] = (score / _sum) * (len(trendy_scoops) / SCOOPS_IN_PAGE)
-    return {key: val for key, val in trendy_scoops.items() if val > INTEREST_THRESHOLD}
+    _sum = sum(scoops_dict.values())
+    for scoop, score in scoops_dict.items():
+        scoops_dict[scoop] = (score / _sum) * (len(scoops_dict) / SCOOPS_IN_PAGE)
+    trendy_scoops = {key: val for key, val in scoops_dict.items() if val > INTEREST_THRESHOLD}
+    for trendy_scoop_link in trendy_scoops.keys():
+        _acknowledge_scoop(trendy_scoop_link)
+    return trendy_scoops
 
 
 if __name__ == '__main__':
